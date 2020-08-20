@@ -10,7 +10,16 @@ const io = socketio(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connect', (socket) => {
-  console.log('New web socket connection');
+  // Only to the connected user
+  socket.emit('message', 'This is a welcome message to Chat App');
+
+  // To all users accept the connected user when a user connects
+  socket.broadcast.emit('message', 'A user has joined the chat');
+
+  // To all the users when a user disconnects
+  socket.on('disconnect', () => {
+    io.emit('message', 'A user has left');
+  });
 });
 
 const PORT = 3000 || process.env.PORT;
