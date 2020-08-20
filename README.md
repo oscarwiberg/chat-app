@@ -1,3 +1,3 @@
 # chat-app
 
-Realtime chat Aap with users and rooms using Socket.io, Node & Express
+Realtime chat app with users and rooms using Socket.io, Node & Express
