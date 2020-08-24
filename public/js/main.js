@@ -31,5 +31,6 @@ const outputMessage = (message) => {
     <p class="text">
       ${message}
     </p>`;
+
   document.querySelector('.chat-messages').appendChild(div);
 };
