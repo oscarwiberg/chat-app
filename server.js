@@ -2,7 +2,14 @@ const express = require('express');
 const path = require('path');
 const http = require('http');
 const formatMessage = require('./utils/messages');
+const {
+  userJoin,
+  getCurrentUser,
+  userLeave,
+  getRoomUsers,
+} = require('./utils/users');
 const socketio = require('socket.io');
+const { SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION } = require('constants');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,26 +20,52 @@ app.use(express.static(path.join(__dirname, 'public')));
 const botName = 'The awesome ChatBot';
 
 io.on('connect', (socket) => {
-  // Only to the connected user
-  socket.emit(
-    'message',
-    formatMessage(botName, 'This is a welcome message to Chat App')
-  );
+  socket.on('joinRoom', ({ username, room }) => {
+    const user = userJoin(socket.id, username, room);
 
-  // To all users accept the connected user when a user connects
-  socket.broadcast.emit(
-    'message',
-    formatMessage(botName, 'A user has joined the chat')
-  );
+    socket.join(user.room);
 
-  // To all the users when a user disconnects
-  socket.on('disconnect', () => {
-    io.emit('message', formatMessage(botName, 'A user has left the chat'));
+    // Only to the connected user
+    socket.emit(
+      'message',
+      formatMessage(botName, 'This is a welcome message to Chat App')
+    );
+
+    // To all users accept the connected user when a user connects
+    socket.broadcast
+      .to(user.room)
+      .emit(
+        'message',
+        formatMessage(botName, `${user.username} has joined the chat`)
+      );
+
+    io.to(user.room).emit('roomUsers', {
+      room: user.room,
+      users: getRoomUsers(user.room),
+    });
   });
 
   // Listen for chat message
   socket.on('chatMessage', (message) => {
-    io.emit('message', formatMessage('***user***', message));
+    const user = getCurrentUser(socket.id);
+    io.to(user.room).emit('message', formatMessage(user.username, message));
+  });
+
+  // To all the users when a user disconnects
+  socket.on('disconnect', () => {
+    const user = userLeave(socket.id);
+
+    if (user) {
+      io.to(user.room).emit(
+        'message',
+        formatMessage(botName, `${user.username} has left the chat`)
+      );
+
+      io.to(user.room).emit('roomUsers', {
+        room: user.room,
+        users: getRoomUsers(user.room),
+      });
+    }
   });
 });
 
